@@ -14,11 +14,11 @@
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 
-LABEL name="Nexus Repository Manager" \
-      maintainer="Sonatype <support@sonatype.com>" \
+LABEL name="Nexus Repository Manager - SugarCRM Customized" \
+      maintainer="Sonatype <support@sonatype.com>, SugarCRM Operations/SRE" \
       vendor=Sonatype \
-      version="3.42.0-01" \
-      release="3.42.0" \
+      version="3.41.0-01" \
+      release="3.41.0" \
       url="https://sonatype.com" \
       summary="The Nexus Repository Manager server \
           with universal support for popular component formats." \
@@ -36,9 +36,13 @@ LABEL name="Nexus Repository Manager" \
       io.openshift.expose-services="8081:8081" \
       io.openshift.tags="Sonatype,Nexus,Repository Manager"
 
-ARG NEXUS_VERSION=3.42.0-01
+ARG NEXUS_VERSION=3.41.0-01
 ARG NEXUS_DOWNLOAD_URL=https://download.sonatype.com/nexus/3/nexus-${NEXUS_VERSION}-unix.tar.gz
-ARG NEXUS_DOWNLOAD_SHA256_HASH=8d658543c5e58fb0abf24c1569f5434d95806682705f76fe5a7909c794e347b2
+ARG NEXUS_DOWNLOAD_SHA256_HASH=ce265e627a665f9e833bf9c6e15a58c739882eb753863062f9e42e83e6f0d844
+
+ARG COMPOSER_VERSION=0.0.24
+ARG COMPOSER_DOWNLOAD_URL=https://search.maven.org/remotecontent?filepath=org/sonatype/nexus/plugins/nexus-repository-composer/${COMPOSER_VERSION}/nexus-repository-composer-${COMPOSER_VERSION}-bundle.kar
+ARG COMPOSER_DOWNLOAD_SHA256_HASH=b86e0d1242676af51c647e33eb136500a05ece928f8c015b00b886d4d1997d37
 
 # configure nexus runtime
 ENV SONATYPE_DIR=/opt/sonatype
@@ -68,6 +72,13 @@ RUN curl -L ${NEXUS_DOWNLOAD_URL} --output nexus-${NEXUS_VERSION}-unix.tar.gz \
     && chown -R nexus:nexus ${SONATYPE_WORK} \
     && mv ${SONATYPE_WORK}/nexus3 ${NEXUS_DATA} \
     && ln -s ${NEXUS_DATA} ${SONATYPE_WORK}/nexus3
+
+# Download PHP composer plugin & set it up
+RUN curl -L ${COMPOSER_DOWNLOAD_URL} --output composer-${COMPOSER_VERSION}-bundle.kar \
+    && echo "${COMPOSER_DOWNLOAD_SHA256_HASH} composer-${COMPOSER_VERSION}-bundle.kar" > composer-${COMPOSER_VERSION}-bundle.kar.sha256 \
+    && sha256sum -c composer-${COMPOSER_VERSION}-bundle.kar.sha256 \
+    && mv composer-${COMPOSER_VERSION}-bundle.kar ${NEXUS_HOME}/deploy/ \
+    && rm -f composer-${COMPOSER_VERSION}-bundle.kar.sha256
 
 # Removing java memory settings from nexus.vmoptions since now we use INSTALL4J_ADD_VM_PARAMS
 RUN sed -i '/^-Xms/d;/^-Xmx/d;/^-XX:MaxDirectMemorySize/d' $NEXUS_HOME/bin/nexus.vmoptions
